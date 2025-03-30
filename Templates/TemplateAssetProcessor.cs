@@ -1,15 +1,11 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using UnityEditor;
-using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace Swiss.Editor.Templates
@@ -26,15 +22,13 @@ namespace Swiss.Editor.Templates
         public const string TEMPLATE_SUFFIX = ".t.cs";
         public const string TEMPLATE_RESULT_SUFFIX = ".tr.cs";
 
-        private const string META_SUFFIX = ".meta";
         private static readonly Regex TEMPLATE_NAME_FROM_FILE = new(@"
-            ^((\s|/\*.*?\*/)*(
-            //.*
+            ^((\s|/\*.*?\*/|//.*?\r?\n)*(
             |\#[^\r\n]*\r?\n
-            |using(\s|/\*.*?\*/)+\w+(\s|/\*.*?\*/)*(\.(\s|/\*.*?\*/)*\w+(\s|/\*.*?\*/)*)*;
-            |namespace(\s|/\*.*?\*/)+\w+(\s|/\*.*?\*/)*(\.(\s|/\*.*?\*/)*\w+(\s|/\*.*?\*/)*)*[;{]
+            |using(\s|/\*.*?\*/|//.*?\r?\n)+(static(\s|/\*.*?\*/|//.*?\r?\n)*)?\w+(\s|/\*.*?\*/|//.*?\r?\n)*(\.(\s|/\*.*?\*/|//.*?\r?\n)*\w+(\s|/\*.*?\*/|//.*?\r?\n)*)*;
+            |namespace(\s|/\*.*?\*/|//.*?\r?\n)+\w+(\s|/\*.*?\*/|//.*?\r?\n)*(\.(\s|/\*.*?\*/|//.*?\r?\n)*\w+(\s|/\*.*?\*/|//.*?\r?\n)*)*[;{]
             ))*
-            (\s|/\*.*?\*/)*(public|internal)(\s|/\*.*?\*/)*static(\s|/\*.*?\*/)*class(\s|/\*.*?\*/)*(?<name>_?Template\w*)",
+            (\s|/\*.*?\*/|//.*?\r?\n)*(public|internal)(\s|/\*.*?\*/|//.*?\r?\n)*static(\s|/\*.*?\*/|//.*?\r?\n)*class(\s|/\*.*?\*/|//.*?\r?\n)*(?<name>_?Template\w*)",
             RegexOptions.Singleline | RegexOptions.ExplicitCapture | RegexOptions.IgnorePatternWhitespace
         );
 
@@ -47,13 +41,15 @@ namespace Swiss.Editor.Templates
         {
             EditorApplication.delayCall -= _OnAfterCompilation;
 
-            List<(string effectedDirectoryPath, System.Reflection.Assembly assembly)> assemblyDeclarationFilePaths = new();
+            List<(string effectedDirectoryPath, Assembly assembly)> assemblyDeclarationFilePaths = new();
 
             var allAssemblies = AppDomain.CurrentDomain.GetAssemblies().Select((v) => (assembly: v, name: v.GetName().Name));
 
+            TemplateContext.FindAndCacheAllParameterValues();
+
             var assetPath = Application.dataPath;
             SearchIn(assetPath, allAssemblies.First((v) => v.name == "Assembly-CSharp").assembly);
-            void SearchIn(string path, System.Reflection.Assembly assemblyContext)
+            void SearchIn(string path, Assembly assemblyContext)
             {
                 var filePaths = Directory.EnumerateFiles(path).Select((v) => (full: v, relative: v[(assetPath.Length - 6)..])).ToList();
 
@@ -129,6 +125,8 @@ namespace Swiss.Editor.Templates
 
                     if (type == null)
                     {
+                        // Ignoring here probably fixes the template deleting the result when Unity starts up with compilation errors.
+                        /*
                         File.WriteAllText(resultFilePath,
                             "///\n" +
                             "/// This is a template result file that was supposed to be filled with generated code.\n" +
@@ -137,6 +135,7 @@ namespace Swiss.Editor.Templates
                             "/// to be hidden to the template system.\n" +
                             "///"
                         );
+                        */
 
                         continue;
                     }

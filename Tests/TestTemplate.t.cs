@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
-using UnityEngine;
+using System.Linq;
+using System.Text;
 
 namespace Swiss.Editor.Templates
 {
@@ -7,9 +8,7 @@ namespace Swiss.Editor.Templates
     {
         public static string Generate(TemplateContext context)
         {
-            var a = new A();
-
-            return "class A {}";
+            return new StringBuilder().AppendJoin("\n", context.GetTypes().Select((v) => $"// {v.Name}")).ToString();
         }
     }
 }
