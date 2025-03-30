@@ -1,7 +1,9 @@
 {
     "name": "Swiss",
     "rootNamespace": "Swiss",
-    "references": [],
+    "references": [
+        "GUID:5c2ad59cf819de64a9095bc623b2a3a5"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
