@@ -9,8 +9,9 @@ namespace Swiss
     {
         public static TResult[] ToArray<TSource, TResult>(IEnumerable<TSource> collection, Func<TSource, TResult> selector)
         {
-            Assert.IsNotNull(collection);
             if (collection == null)
+                throw new NullReferenceException();
+            if (selector == null)
                 throw new NullReferenceException();
 
             TResult[] result = null;
@@ -20,7 +21,38 @@ namespace Swiss
             else if (collection is IReadOnlyCollection<TSource> collectionAsReadOnlyCollection)
                 result = new TResult[collectionAsReadOnlyCollection.Count];
 
-            return result ?? new List<TResult>(collection.Select(selector)).ToArray();
+            if (result == null)
+                return new List<TResult>(collection.Select(selector)).ToArray();
+
+            var enumerator = collection.GetEnumerator();
+            for (int i = 0; i < result.Length; i++)
+            {
+                enumerator.MoveNext();
+                result[i] = selector.Invoke(enumerator.Current);
+            }
+            enumerator.Dispose();
+
+            return result;
+        }
+
+        public static HashSet<TResult> ToHashSet<TSource, TResult>(IEnumerable<TSource> collection, Func<TSource, TResult> selector)
+        {
+            if (collection == null)
+                throw new NullReferenceException();
+
+            HashSet<TResult> result;
+
+            if (collection is ICollection<TSource> collectionAsCollection)
+                result = new HashSet<TResult>(collectionAsCollection.Count);
+            else if (collection is IReadOnlyCollection<TSource> collectionAsReadOnlyCollection)
+                result = new HashSet<TResult>(collectionAsReadOnlyCollection.Count);
+            else
+                result = new HashSet<TResult>();
+
+            foreach (var item in collection)
+                result.Add(selector.Invoke(item));
+
+            return result;
         }
     }
 }
