@@ -11,27 +11,27 @@ namespace Swiss
         [InspectorName("camelCase")] CamelCase,
         [InspectorName("PascalCase")] PascalCase,
         [InspectorName("snake_case")] SnakeCase,
-        [InspectorName("web-case")] WebCase,
         [InspectorName("UPPER_SNAKE_CASE")] UpperSnakeCase,
+        [InspectorName("web-case")] WebCase,
         [InspectorName("Sentence case")] SentenceCase,
         [InspectorName("Title Case")] TitleCase,
     }
 
     public static partial class Func
     {
-        public static string ToCasing(this string value, Casing casing) => value == null ? null : ToCasing((ReadOnlySpan<char>)value, casing);
-        public static string ToCasing(this Span<char> value, Casing casing) => ToCasing((ReadOnlySpan<char>)value, casing);
-        public static string ToCasing(this ReadOnlySpan<char> value, Casing casing)
+        public static string ToCasing(this string text, Casing casing) => text == null ? throw Expt.ArgumentNull(nameof(text)) : ToCasing((ReadOnlySpan<char>)text, casing);
+        public static string ToCasing(this Span<char> text, Casing casing) => ToCasing((ReadOnlySpan<char>)text, casing);
+        public static string ToCasing(this ReadOnlySpan<char> text, Casing casing)
         {
-            if (value == null)
-                return null;
+            if (text == null)
+                throw Expt.ArgumentNull(nameof(text));
 
             var stringBuilder = new StringBuilder();
             var lastChar = ' ';
             var currentChar = ' ';
             var nextChar = ' ';
 
-            var enumerator = value.GetEnumerator();
+            var enumerator = text.GetEnumerator();
             var state = (byte)0;
             var isFirstWord = true;
             while (true)
@@ -51,11 +51,12 @@ namespace Swiss
                         case Casing.CamelCase: stringBuilder.Append(isFirstWord ? char.ToLower(currentChar) : char.ToUpper(currentChar)); break;
                         case Casing.PascalCase: stringBuilder.Append(char.ToUpper(currentChar)); break;
                         case Casing.SnakeCase: if (!isFirstWord) stringBuilder.Append('_'); stringBuilder.Append(char.ToLower(currentChar)); break;
-                        case Casing.WebCase: if (!isFirstWord) stringBuilder.Append('-'); stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.UpperSnakeCase: if (!isFirstWord) stringBuilder.Append('_'); stringBuilder.Append(char.ToUpper(currentChar)); break;
+                        case Casing.WebCase: if (!isFirstWord) stringBuilder.Append('-'); stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.SentenceCase: if (!isFirstWord) stringBuilder.Append(' '); stringBuilder.Append(isFirstWord || (char.IsUpper(currentChar) && char.IsUpper(nextChar)) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
                         case Casing.TitleCase: if (!isFirstWord) stringBuilder.Append(' '); stringBuilder.Append(char.ToUpper(currentChar)); break;
-                        default: goto case Casing.TitleCase;
+                        default:
+                            throw Expt.EnumInvalid<Casing>(nameof(casing));
                     }
 
                     isFirstWord = false;
@@ -66,11 +67,12 @@ namespace Swiss
                         case Casing.CamelCase:
                         case Casing.PascalCase: stringBuilder.Append(char.IsUpper(currentChar) && char.IsUpper(nextChar) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
                         case Casing.SnakeCase: stringBuilder.Append(char.ToLower(currentChar)); break;
-                        case Casing.WebCase: stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.UpperSnakeCase: stringBuilder.Append(char.ToUpper(currentChar)); break;
+                        case Casing.WebCase: stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.SentenceCase: stringBuilder.Append(char.IsUpper(currentChar) && char.IsUpper(nextChar) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
                         case Casing.TitleCase: stringBuilder.Append(char.IsUpper(currentChar) && char.IsUpper(nextChar) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
-                        default: goto case Casing.TitleCase;
+                        default:
+                            throw Expt.EnumInvalid<Casing>(nameof(casing));
                     }
 
                 if (state == 2)
@@ -82,17 +84,17 @@ namespace Swiss
 
             return stringBuilder.ToString();
         }
-        public static string ToCasing(this IEnumerable<char> value, Casing casing)
+        public static string ToCasing(this IEnumerable<char> text, Casing casing)
         {
-            if (value == null)
-                return null;
+            if (text == null)
+                throw Expt.ArgumentNull(nameof(text));
 
             var stringBuilder = new StringBuilder();
             var lastChar = ' ';
             var currentChar = ' ';
             var nextChar = ' ';
 
-            var enumerator = value.GetEnumerator();
+            var enumerator = text.GetEnumerator();
             var state = (byte)0;
             var isFirstWord = true;
             while (true)
@@ -112,11 +114,12 @@ namespace Swiss
                         case Casing.CamelCase: stringBuilder.Append(isFirstWord ? char.ToLower(currentChar) : char.ToUpper(currentChar)); break;
                         case Casing.PascalCase: stringBuilder.Append(char.ToUpper(currentChar)); break;
                         case Casing.SnakeCase: if (!isFirstWord) stringBuilder.Append('_'); stringBuilder.Append(char.ToLower(currentChar)); break;
-                        case Casing.WebCase: if (!isFirstWord) stringBuilder.Append('-'); stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.UpperSnakeCase: if (!isFirstWord) stringBuilder.Append('_'); stringBuilder.Append(char.ToUpper(currentChar)); break;
+                        case Casing.WebCase: if (!isFirstWord) stringBuilder.Append('-'); stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.SentenceCase: if (!isFirstWord) stringBuilder.Append(' '); stringBuilder.Append(isFirstWord || (char.IsUpper(currentChar) && char.IsUpper(nextChar)) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
                         case Casing.TitleCase: if (!isFirstWord) stringBuilder.Append(' '); stringBuilder.Append(char.ToUpper(currentChar)); break;
-                        default: goto case Casing.TitleCase;
+                        default:
+                            throw Expt.EnumInvalid<Casing>(nameof(casing));
                     }
 
                     isFirstWord = false;
@@ -127,11 +130,12 @@ namespace Swiss
                         case Casing.CamelCase:
                         case Casing.PascalCase: stringBuilder.Append(char.IsUpper(currentChar) && char.IsUpper(nextChar) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
                         case Casing.SnakeCase: stringBuilder.Append(char.ToLower(currentChar)); break;
-                        case Casing.WebCase: stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.UpperSnakeCase: stringBuilder.Append(char.ToUpper(currentChar)); break;
+                        case Casing.WebCase: stringBuilder.Append(char.ToLower(currentChar)); break;
                         case Casing.SentenceCase: stringBuilder.Append(char.IsUpper(currentChar) && char.IsUpper(nextChar) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
                         case Casing.TitleCase: stringBuilder.Append(char.IsUpper(currentChar) && char.IsUpper(nextChar) ? char.ToUpper(currentChar) : char.ToLower(currentChar)); break;
-                        default: goto case Casing.TitleCase;
+                        default:
+                            throw Expt.EnumInvalid<Casing>(nameof(casing));
                     }
 
                 if (state == 2)
