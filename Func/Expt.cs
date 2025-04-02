@@ -6,11 +6,13 @@ namespace Swiss
     {
         public static ArgumentException Argument(string message = "Argument must be valid.") => new(message);
 
+        public static NullReferenceException Null<T>(string valueName = "value") => Null(valueName, typeof(T).Name);
         public static NullReferenceException Null(string valueName = "value", string typeName = null) => new(
             (valueName == null ? "Value" : valueName.Length > 0 ? char.ToUpper(valueName[0]) + valueName[1..] : valueName) +
             (typeName == null ? null : $"of type '{typeName}'") +
             " cannot be null.");
 
+        public static ArgumentNullException ArgumentNull<T>(string valueName = "argument") => ArgumentNull(valueName, typeof(T).Name);
         public static ArgumentNullException ArgumentNull(string valueName = "argument", string typeName = null) => new(
             (valueName == null ? "Argument" : valueName.Length > 0 ? char.ToUpper(valueName[0]) + valueName[1..] : valueName) +
             (typeName == null ? null : $"of type '{typeName}'") +
