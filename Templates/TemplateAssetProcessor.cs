@@ -45,7 +45,7 @@ namespace Swiss.Editor.Templates
 
             var allAssemblies = AppDomain.CurrentDomain.GetAssemblies().Select((v) => (assembly: v, name: v.GetName().Name));
 
-            TemplateContext.FindAndCacheAllParameterValues();
+            var context = TemplateContext.CreateInstance();
 
             var assetPath = Application.dataPath;
             SearchIn(assetPath, allAssemblies.First((v) => v.name == "Assembly-CSharp").assembly);
@@ -99,15 +99,15 @@ namespace Swiss.Editor.Templates
                             "/// be in the following format:\n" +
                             "///\n" +
                             "/// <code>\n" +
-                            "/// #if UNITY_EDITOR // <- Optional but recommended conditional\n" +
+                            "/// #if UNITY_EDITOR // <- Optional but recommended conditional.\n" +
                             "///\n" +
-                            "/// using <INSERT NAMESPACES>; // <- Namespaces\n" +
+                            "/// using <INSERT NAMESPACES>; // <- Optional namespaces.\n" +
                             "///\n" +
-                            "/// namespace <INSERT NAMESPACE>\n" +
+                            "/// namespace <INSERT NAMESPACE> // <- Optional namespace.\n" +
                             "/// {\n" +
-                            "///     internal static class _Template_<INSERT NAME>\n" +
+                            "///     internal static class _Template_<INSERT NAME> // <- Specific definition with name starting with '_Template_'.\n" +
                             "///     {\n" +
-                            "///         public static TemplateResult Generate()\n" +
+                            "///         public static string Generate() // <- Method returning an object that implements 'ToString()'\n" +
                             "///         {\n" +
                             "///             return /* ... Generated Code ... */;\n" +
                             "///         }\n" +
@@ -168,7 +168,7 @@ namespace Swiss.Editor.Templates
                         "/// This is a template result file that has been filled by <see cref=\"" + type.FullName + ".Generate\"/>.\n" +
                         "///\n" +
                         "\n" +
-                        method.Invoke(null, new object[] { new TemplateContext() }).ToString()
+                        method.Invoke(null, new object[] { context }).ToString()
                     );
                 };
             }
