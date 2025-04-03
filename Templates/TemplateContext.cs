@@ -12,18 +12,21 @@ namespace Swiss.Editor.Templates
     {
         private static readonly Regex _CHECK_ASSEMBLIES_WITH_NAME_PATTERN = new(@"^(?!Unity|System)", RegexOptions.Singleline | RegexOptions.ExplicitCapture);
 
-        private static Dictionary<string, List<bool>> _boolValues = new();
-        private static Dictionary<string, List<float>> _floatValues = new();
-        private static Dictionary<string, List<int>> _intValues = new();
-        private static Dictionary<string, List<string>> _stringValues = new();
-        private static Dictionary<string, List<Type>> _typeValues = new();
+        private Dictionary<string, List<bool>> _boolValues;
+        private Dictionary<string, List<float>> _floatValues;
+        private Dictionary<string, List<int>> _intValues;
+        private Dictionary<string, List<string>> _stringValues;
+        private Dictionary<string, List<TemplateType>> _typeValues;
 
-        public static void FindAndCacheAllParameterValues()
+        private TemplateContext() { }
+
+        public static TemplateContext CreateInstance()
         {
-            _floatValues.Clear();
-            _intValues.Clear();
-            _stringValues.Clear();
-            _typeValues.Clear();
+            var boolValues = new Dictionary<string, List<bool>>();
+            var floatValues = new Dictionary<string, List<float>>();
+            var intValues = new Dictionary<string, List<int>>();
+            var stringValues = new Dictionary<string, List<string>>();
+            var typeValues = new Dictionary<string, List<TemplateType>>();
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -32,44 +35,51 @@ namespace Swiss.Editor.Templates
 
                 foreach (var type in assembly.GetTypes())
                 {
-                    static void SetValue(string name, object value)
+                    void SetValue(string name, object value)
                     {
                         name ??= "";
 
                         if (value is bool boolValue)
                         {
-                            if (_boolValues.TryGetValue(name, out var boolValueList))
+                            if (boolValues.TryGetValue(name, out var boolValueList))
                                 boolValueList.Add(boolValue);
                             else
-                                _boolValues[name] = new() { boolValue };
+                                boolValues[name] = new() { boolValue };
                         }
                         else if (value is float floatValue)
                         {
-                            if (_floatValues.TryGetValue(name, out var floatValueList))
+                            if (floatValues.TryGetValue(name, out var floatValueList))
                                 floatValueList.Add(floatValue);
                             else
-                                _floatValues[name] = new() { floatValue };
+                                floatValues[name] = new() { floatValue };
                         }
                         else if (value is int intValue)
                         {
-                            if (_intValues.TryGetValue(name, out var intValueList))
+                            if (intValues.TryGetValue(name, out var intValueList))
                                 intValueList.Add(intValue);
                             else
-                                _intValues[name] = new() { intValue };
+                                intValues[name] = new() { intValue };
                         }
                         else if (value is string stringValue)
                         {
-                            if (_stringValues.TryGetValue(name, out var stringValueList))
+                            if (stringValues.TryGetValue(name, out var stringValueList))
                                 stringValueList.Add(stringValue);
                             else
-                                _stringValues[name] = new() { stringValue };
+                                stringValues[name] = new() { stringValue };
                         }
                         else if (value is Type typeValue)
                         {
-                            if (_typeValues.TryGetValue(name, out List<Type> typeValueList))
+                            if (typeValues.TryGetValue(name, out var typeValueList))
                                 typeValueList.Add(typeValue);
                             else
-                                _typeValues[name] = new List<Type> { typeValue };
+                                typeValues[name] = new() { typeValue };
+                        }
+                        else if (value is TemplateType templateTypeValue)
+                        {
+                            if (typeValues.TryGetValue(name, out var templateTypeValueList))
+                                templateTypeValueList.Add(templateTypeValue);
+                            else
+                                typeValues[name] = new() { templateTypeValue };
                         }
                         else if (value is IEnumerable<object> enumerableValue)
                         {
@@ -100,6 +110,7 @@ namespace Swiss.Editor.Templates
                                 && method.ReturnType != typeof(int)
                                 && method.ReturnType != typeof(string)
                                 && method.ReturnType != typeof(Type)
+                                && method.ReturnType != typeof(TemplateType)
                                 && !typeof(IEnumerable<object>).IsAssignableFrom(method.ReturnType)))
                         {
                             Debug.LogError($"Methods with a {nameof(TemplateParameterAttribute)} must be static, have no parameters and return a bool, float, int, string or System.Type");
@@ -128,6 +139,7 @@ namespace Swiss.Editor.Templates
                                 && getMethod.ReturnType != typeof(int)
                                 && getMethod.ReturnType != typeof(string)
                                 && getMethod.ReturnType != typeof(Type)
+                                && getMethod.ReturnType != typeof(TemplateType)
                                 && !typeof(IEnumerable<object>).IsAssignableFrom(getMethod.ReturnType)))
                         {
                             Debug.LogError($"Properties with a {nameof(TemplateParameterAttribute)} must have a static get and be of type bool, float, int, string or System.Type");
@@ -152,6 +164,7 @@ namespace Swiss.Editor.Templates
                                 && field.FieldType != typeof(int)
                                 && field.FieldType != typeof(string)
                                 && field.FieldType != typeof(Type)
+                                && field.FieldType != typeof(TemplateType)
                                 && !typeof(IEnumerable<object>).IsAssignableFrom(field.FieldType)))
                         {
                             Debug.LogError($"Fields with a {nameof(TemplateParameterAttribute)} must be static and of type bool, float, int, string or System.Type");
@@ -164,9 +177,18 @@ namespace Swiss.Editor.Templates
                     }
                 }
             }
+
+            return new TemplateContext()
+            {
+                _boolValues = boolValues,
+                _floatValues = floatValues,
+                _intValues = intValues,
+                _stringValues = stringValues,
+                _typeValues = typeValues,
+            };
         }
 
-        public static bool GetBoolParameter(string parameterName)
+        public bool GetBool(string parameterName = null)
         {
             if (!_boolValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
             {
@@ -176,7 +198,7 @@ namespace Swiss.Editor.Templates
 
             return list[0];
         }
-        public static float GetFloatParameter(string parameterName)
+        public float GetFloat(string parameterName = null)
         {
             if (!_floatValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
             {
@@ -186,7 +208,7 @@ namespace Swiss.Editor.Templates
 
             return list[0];
         }
-        public static int GetIntParameter(string parameterName)
+        public int GetInt(string parameterName = null)
         {
             if (!_intValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
             {
@@ -196,7 +218,7 @@ namespace Swiss.Editor.Templates
 
             return list[0];
         }
-        public static string GetStringParameter(string parameterName)
+        public string GetString(string parameterName = null)
         {
             if (!_stringValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
             {
@@ -206,7 +228,7 @@ namespace Swiss.Editor.Templates
 
             return list[0];
         }
-        public static Type GetTypeParameter(string parameterName)
+        public TemplateType GetType(string parameterName = null)
         {
             if (!_typeValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
             {
@@ -217,53 +239,433 @@ namespace Swiss.Editor.Templates
             return list[0];
         }
         
-        public static IEnumerable<bool> GetBoolParameters(string parameterName)
+        public IEnumerable<bool> GetBools(string parameterName = null)
         {
             if (!_boolValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
                 return Enumerable.Empty<bool>();
 
             return list;
         }
-        public static IEnumerable<float> GetFloatParameters(string parameterName)
+        public IEnumerable<float> GetFloats(string parameterName = null)
         {
             if (!_floatValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
                 return Enumerable.Empty<float>();
 
             return list;
         }
-        public static IEnumerable<int> GetIntParameters(string parameterName)
+        public IEnumerable<int> GetInts(string parameterName = null)
         {
             if (!_intValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
                 return Enumerable.Empty<int>();
 
             return list;
         }
-        public static IEnumerable<string> GetStringParameters(string parameterName)
+        public IEnumerable<string> GetStrings(string parameterName = null)
         {
             if (!_stringValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
                 return Enumerable.Empty<string>();
 
             return list;
         }
-        public static IEnumerable<Type> GetTypeParameters(string parameterName)
+        public IEnumerable<TemplateType> GetTypes(string parameterName = null)
         {
             if (!_typeValues.TryGetValue(parameterName ?? "", out var list) || list.Count <= 0)
-                return Enumerable.Empty<Type>();
+                return Enumerable.Empty<TemplateType>();
 
             return list;
         }
 
-        public bool GetBool(string parameterName) => GetBoolParameter(parameterName);
-        public float GetFloat(string parameterName) => GetFloatParameter(parameterName);
-        public int GetInt(string parameterName) => GetIntParameter(parameterName);
-        public string GetString(string parameterName) => GetStringParameter(parameterName);
-        public Type GetType(string parameterName) => GetTypeParameter(parameterName);
+        public static bool OperatorExists(OperatorType operatorType, Type returnType, Type[] parameters, bool explicitCastResult = false) =>
+            parameters.Length == 1 ? OperatorExists(operatorType, returnType, parameters[0], explicitCastResult) :
+            parameters.Length == 2 ? OperatorExists(operatorType, returnType, parameters[0], parameters[1], explicitCastResult) :
+            false;
+        public static bool OperatorExists(OperatorType operatorType, Type returnType, Type leftParameter, Type rightParameter, bool explicitCastResult = false)
+        {
+            bool _Is(Type returnType, Type targetReturnType, Type leftParameter, Type targetLeftParameter, Type rightParameter, Type targetRightParameter)
+            {
+                if (explicitCastResult ? !OperatorExists(OperatorType.Explicit, returnType, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
+                    return false;
 
-        public IEnumerable<bool> GetBools(string parameterName) => GetBoolParameters(parameterName);
-        public IEnumerable<float> GetFloats(string parameterName) => GetFloatParameters(parameterName);
-        public IEnumerable<int> GetInts(string parameterName) => GetIntParameters(parameterName);
-        public IEnumerable<string> GetStrings(string parameterName) => GetStringParameters(parameterName);
-        public IEnumerable<Type> GetTypes(string parameterName = "") => GetTypeParameters(parameterName);
+                byte leftMatch = 0;
+                byte rightMatch = 0;
+
+                if (targetLeftParameter.IsAssignableFrom(leftParameter))
+                    leftMatch = 2;
+                else if (OperatorExists(OperatorType.Implicit, targetLeftParameter, leftParameter))
+                    leftMatch = 1;
+
+                if (targetRightParameter.IsAssignableFrom(rightParameter))
+                    rightMatch = 2;
+                else if (OperatorExists(OperatorType.Implicit, targetRightParameter, rightParameter))
+                    rightMatch = 1;
+
+                return (leftMatch >= 2 && rightMatch >= 1) || (leftMatch >= 1 && rightMatch >= 2);
+            }
+
+            static IEnumerable<Type> _BaseTypes(Type type)
+            {
+                while (type != null)
+                {
+                    yield return type;
+                    type = type.BaseType;
+                }
+            }
+
+            return operatorType switch
+            {
+                OperatorType.Addition
+                or OperatorType.Subtraction
+                or OperatorType.Multiply
+                or OperatorType.Division
+                or OperatorType.Modulus =>
+                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int))
+                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(uint))
+                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(long))
+                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(ulong))
+                    || _Is(returnType, typeof(float), leftParameter, typeof(float), rightParameter, typeof(float))
+                    || _Is(returnType, typeof(double), leftParameter, typeof(double), rightParameter, typeof(double))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+
+                OperatorType.ExclusiveOr
+                or OperatorType.BitwiseAnd
+                or OperatorType.BitwiseOr =>
+                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int))
+                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(uint))
+                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(long))
+                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(ulong))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+
+                OperatorType.LogicalAnd
+                or OperatorType.LogicalOr =>
+                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+                OperatorType.Assign => OperatorExists(OperatorType.Implicit, leftParameter, rightParameter),
+
+                OperatorType.LeftShift
+                or OperatorType.RightShift =>
+                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int))
+                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(int))
+                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(int))
+                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(int))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+
+                OperatorType.Equality
+                or OperatorType.Inequality
+                or OperatorType.GreaterThan
+                or OperatorType.LessThan
+                or OperatorType.GreaterThanOrEqual
+                or OperatorType.LessThanOrEqual =>
+                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool))
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(int), rightParameter, typeof(int))
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(uint), rightParameter, typeof(uint))
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(long), rightParameter, typeof(long))
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(ulong), rightParameter, typeof(ulong))
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(float), rightParameter, typeof(float))
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(double), rightParameter, typeof(double))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+
+                OperatorType.AdditionAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Addition, leftParameter, rightParameter),
+                OperatorType.SubtractionAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Subtraction, leftParameter, rightParameter),
+                OperatorType.MultiplicationAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Multiply, leftParameter, rightParameter),
+                OperatorType.DivisionAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Division, leftParameter, rightParameter),
+                OperatorType.ModulusAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Modulus, leftParameter, rightParameter),
+                OperatorType.ExclusiveOrAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.ExclusiveOr, leftParameter, rightParameter),
+                OperatorType.BitwiseAndAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.BitwiseAnd, leftParameter, rightParameter),
+                OperatorType.BitwiseOrAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.BitwiseOr, leftParameter, rightParameter),
+                OperatorType.LeftShiftAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.LeftShift, leftParameter, rightParameter),
+
+                OperatorType.Comma =>
+                    operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType)),
+
+                _ => false,
+            };
+        }
+        public static bool OperatorExists(OperatorType operatorType, Type returnType, Type parameter, bool explicitCastResult = false)
+        {
+            bool _Is(Type returnType, Type targetReturnType, Type parameter, Type targetParameter)
+            {
+                if (explicitCastResult ? !OperatorExists(OperatorType.Explicit, returnType, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
+                    return false;
+
+                return targetParameter.IsAssignableFrom(parameter);
+            }
+
+            static IEnumerable<Type> _BaseTypes(Type type)
+            {
+                while (type != null)
+                {
+                    yield return type;
+                    type = type.BaseType;
+                }
+            }
+
+            return operatorType switch
+            {
+                OperatorType.Implicit =>
+                    returnType.IsAssignableFrom(parameter)
+                    || (explicitCastResult ? OperatorExists(OperatorType.Explicit, returnType, parameter)
+                        : (returnType == typeof(bool)
+                            && parameter == typeof(bool))
+                        || (returnType == typeof(byte)
+                            && (parameter == typeof(byte)
+                                || parameter == typeof(int)))
+                        || (returnType == typeof(sbyte)
+                            && (parameter == typeof(sbyte)
+                                || parameter == typeof(int)))
+                        || (returnType == typeof(char)
+                            && (parameter == typeof(char)))
+                        || (returnType == typeof(decimal)
+                            && (parameter == typeof(decimal)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(uint)
+                                || parameter == typeof(nint)
+                                || parameter == typeof(nuint)
+                                || parameter == typeof(long)
+                                || parameter == typeof(ulong)
+                                || parameter == typeof(short)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(double)
+                            && (parameter == typeof(double)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(float)
+                                || parameter == typeof(int)
+                                || parameter == typeof(uint)
+                                || parameter == typeof(nint)
+                                || parameter == typeof(nuint)
+                                || parameter == typeof(long)
+                                || parameter == typeof(ulong)
+                                || parameter == typeof(short)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(float)
+                            && (parameter == typeof(float)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(uint)
+                                || parameter == typeof(nint)
+                                || parameter == typeof(nuint)
+                                || parameter == typeof(long)
+                                || parameter == typeof(ulong)
+                                || parameter == typeof(short)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(int)
+                            && (parameter == typeof(int)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(short)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(uint)
+                            && (parameter == typeof(uint)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(nint)
+                            && (parameter == typeof(nint)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(short)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(nuint)
+                            && (parameter == typeof(nuint)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(uint)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(long)
+                            && (parameter == typeof(long)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(uint)
+                                || parameter == typeof(nint)
+                                || parameter == typeof(short)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(ulong)
+                            && (parameter == typeof(ulong)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int)
+                                || parameter == typeof(uint)
+                                || parameter == typeof(nuint)
+                                || parameter == typeof(long)
+                                || parameter == typeof(ushort)))
+                        || (returnType == typeof(short)
+                            && (parameter == typeof(short)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(sbyte)
+                                || parameter == typeof(int)))
+                        || (returnType == typeof(ushort)
+                            && (parameter == typeof(ushort)
+                                || parameter == typeof(byte)
+                                || parameter == typeof(char)
+                                || parameter == typeof(int))))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && _BaseTypes(parameter).SelectMany((v) => v.GetMethods(BindingFlags.Public | BindingFlags.Static).Where((v) => v.Name == operatorName)).Any((v) =>
+                            v.GetParameters().Length == 1
+                            && _Is(returnType, v.ReturnType, parameter, v.GetParameters()[0].ParameterType))),
+
+                OperatorType.Explicit =>
+                    returnType.IsAssignableFrom(parameter)
+                    || (returnType == typeof(bool)
+                        && parameter == typeof(bool))
+                    || ((returnType == typeof(byte)
+                            || returnType == typeof(sbyte)
+                            || returnType == typeof(char)
+                            || returnType == typeof(decimal)
+                            || returnType == typeof(double)
+                            || returnType == typeof(float)
+                            || returnType == typeof(int)
+                            || returnType == typeof(uint)
+                            || returnType == typeof(nint)
+                            || returnType == typeof(nuint)
+                            || returnType == typeof(long)
+                            || returnType == typeof(ulong)
+                            || returnType == typeof(short)
+                            || returnType == typeof(ushort))
+                        && (parameter == typeof(byte)
+                            || parameter == typeof(sbyte)
+                            || parameter == typeof(char)
+                            || parameter == typeof(decimal)
+                            || parameter == typeof(double)
+                            || parameter == typeof(float)
+                            || parameter == typeof(int)
+                            || parameter == typeof(uint)
+                            || parameter == typeof(nint)
+                            || parameter == typeof(nuint)
+                            || parameter == typeof(long)
+                            || parameter == typeof(ulong)
+                            || parameter == typeof(short)
+                            || parameter == typeof(ushort)))
+                    || (operatorType.ToMethodName() is var operatorName
+                        &&_BaseTypes(parameter).SelectMany((v) => v.GetMethods(BindingFlags.Public | BindingFlags.Static).Where((v) => v.Name == operatorName)).Any((v) =>
+                            v.GetParameters().Length == 1
+                            && _Is(returnType, v.ReturnType, parameter, v.GetParameters()[0].ParameterType))),
+
+                OperatorType.Decrement
+                or OperatorType.Increment =>
+                    _Is(returnType, typeof(byte), parameter, typeof(byte))
+                    || _Is(returnType, typeof(sbyte), parameter, typeof(sbyte))
+                    || _Is(returnType, typeof(char), parameter, typeof(char))
+                    || _Is(returnType, typeof(decimal), parameter, typeof(decimal))
+                    || _Is(returnType, typeof(double), parameter, typeof(double))
+                    || _Is(returnType, typeof(float), parameter, typeof(float))
+                    || _Is(returnType, typeof(int), parameter, typeof(int))
+                    || _Is(returnType, typeof(uint), parameter, typeof(uint))
+                    || _Is(returnType, typeof(nint), parameter, typeof(nint))
+                    || _Is(returnType, typeof(nuint), parameter, typeof(nuint))
+                    || _Is(returnType, typeof(long), parameter, typeof(long))
+                    || _Is(returnType, typeof(ulong), parameter, typeof(ulong))
+                    || _Is(returnType, typeof(short), parameter, typeof(short))
+                    || _Is(returnType, typeof(ushort), parameter, typeof(ushort))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && _BaseTypes(parameter).SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 1
+                                && _Is(returnType, v.ReturnType, parameter, v.GetParameters()[0].ParameterType))),
+
+                OperatorType.UnaryNegation =>
+                    _Is(returnType, typeof(int), parameter, typeof(sbyte))
+                    || _Is(returnType, typeof(decimal), parameter, typeof(decimal))
+                    || _Is(returnType, typeof(double), parameter, typeof(double))
+                    || _Is(returnType, typeof(float), parameter, typeof(float))
+                    || _Is(returnType, typeof(int), parameter, typeof(int))
+                    || _Is(returnType, typeof(nint), parameter, typeof(nint))
+                    || _Is(returnType, typeof(long), parameter, typeof(long))
+                    || _Is(returnType, typeof(int), parameter, typeof(short))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && _BaseTypes(parameter).SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 1
+                                && _Is(returnType, v.ReturnType, parameter, v.GetParameters()[0].ParameterType))),
+
+                OperatorType.UnaryPlus =>
+                    _Is(returnType, typeof(int), parameter, typeof(byte))
+                    || _Is(returnType, typeof(int), parameter, typeof(sbyte))
+                    || _Is(returnType, typeof(int), parameter, typeof(char))
+                    || _Is(returnType, typeof(decimal), parameter, typeof(decimal))
+                    || _Is(returnType, typeof(double), parameter, typeof(double))
+                    || _Is(returnType, typeof(float), parameter, typeof(float))
+                    || _Is(returnType, typeof(int), parameter, typeof(int))
+                    || _Is(returnType, typeof(uint), parameter, typeof(uint))
+                    || _Is(returnType, typeof(nint), parameter, typeof(nint))
+                    || _Is(returnType, typeof(nuint), parameter, typeof(nuint))
+                    || _Is(returnType, typeof(long), parameter, typeof(long))
+                    || _Is(returnType, typeof(ulong), parameter, typeof(ulong))
+                    || _Is(returnType, typeof(int), parameter, typeof(short))
+                    || _Is(returnType, typeof(int), parameter, typeof(ushort))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && _BaseTypes(parameter).SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 1
+                                && _Is(returnType, v.ReturnType, parameter, v.GetParameters()[0].ParameterType))),
+
+                OperatorType.OnesComplement =>
+                    _Is(returnType, typeof(int), parameter, typeof(byte))
+                    || _Is(returnType, typeof(int), parameter, typeof(sbyte))
+                    || _Is(returnType, typeof(int), parameter, typeof(char))
+                    || _Is(returnType, typeof(int), parameter, typeof(int))
+                    || _Is(returnType, typeof(uint), parameter, typeof(uint))
+                    || _Is(returnType, typeof(nint), parameter, typeof(nint))
+                    || _Is(returnType, typeof(nuint), parameter, typeof(nuint))
+                    || _Is(returnType, typeof(long), parameter, typeof(long))
+                    || _Is(returnType, typeof(ulong), parameter, typeof(ulong))
+                    || _Is(returnType, typeof(int), parameter, typeof(short))
+                    || _Is(returnType, typeof(int), parameter, typeof(ushort))
+                    || (operatorType.ToMethodName() is var operatorName
+                        && _BaseTypes(parameter).SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 1
+                                && _Is(returnType, v.ReturnType, parameter, v.GetParameters()[0].ParameterType))),
+
+                _ => false,
+            };
+        }
     }
 }
 #endif
