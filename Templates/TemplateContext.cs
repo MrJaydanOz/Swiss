@@ -373,13 +373,26 @@ namespace Swiss.Editor.Templates
                                 && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
 
                 OperatorType.Equality
-                or OperatorType.Inequality
-                or OperatorType.GreaterThan
+                or OperatorType.Inequality =>
+                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(uint), rightParameter, typeof(uint), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(long), rightParameter, typeof(long), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(ulong), rightParameter, typeof(ulong), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(float), rightParameter, typeof(float), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(double), rightParameter, typeof(double), primativeMode: true)
+                    || (operatorType.ToMethodName() is var operatorName
+                        && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
+                            v.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                            .Where((v) => v.Name == operatorName)).Any((v) =>
+                                v.GetParameters().Length == 2
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
+
+                OperatorType.GreaterThan
                 or OperatorType.LessThan
                 or OperatorType.GreaterThanOrEqual
                 or OperatorType.LessThanOrEqual =>
-                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool), primativeMode: true)
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    _Is(returnType, typeof(bool), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
                     || _Is(returnType, typeof(bool), leftParameter, typeof(uint), rightParameter, typeof(uint), primativeMode: true)
                     || _Is(returnType, typeof(bool), leftParameter, typeof(long), rightParameter, typeof(long), primativeMode: true)
                     || _Is(returnType, typeof(bool), leftParameter, typeof(ulong), rightParameter, typeof(ulong), primativeMode: true)
