@@ -281,7 +281,7 @@ namespace Swiss.Editor.Templates
             false;
         public static bool OperatorExists(Type returnType, OperatorType operatorType, Type leftParameter, Type rightParameter, bool explicitCastResult = false)
         {
-            bool _Is(Type returnType, Type targetReturnType, Type leftParameter, Type targetLeftParameter, Type rightParameter, Type targetRightParameter)
+            bool _Is(Type returnType, Type targetReturnType, Type leftParameter, Type targetLeftParameter, Type rightParameter, Type targetRightParameter, bool primativeMode)
             {
                 if (explicitCastResult ? !OperatorExists(returnType, OperatorType.Explicit, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
                     return false;
@@ -299,7 +299,9 @@ namespace Swiss.Editor.Templates
                 else if (OperatorExists(targetRightParameter, OperatorType.Implicit, rightParameter))
                     rightMatch = 1;
 
-                return (leftMatch >= 2 && rightMatch >= 1) || (leftMatch >= 1 && rightMatch >= 2);
+                return primativeMode
+                    ? (leftMatch >= 1 && rightMatch >= 1)
+                    : (leftMatch >= 2 && rightMatch >= 1) || (leftMatch >= 1 && rightMatch >= 2);
             }
 
             static IEnumerable<Type> _BaseTypes(Type type)
@@ -318,56 +320,57 @@ namespace Swiss.Editor.Templates
                 or OperatorType.Multiply
                 or OperatorType.Division
                 or OperatorType.Modulus =>
-                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int))
-                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(uint))
-                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(long))
-                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(ulong))
-                    || _Is(returnType, typeof(float), leftParameter, typeof(float), rightParameter, typeof(float))
-                    || _Is(returnType, typeof(double), leftParameter, typeof(double), rightParameter, typeof(double))
+                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(uint), primativeMode: true)
+                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(long), primativeMode: true)
+                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(ulong), primativeMode: true)
+                    || _Is(returnType, typeof(float), leftParameter, typeof(float), rightParameter, typeof(float), primativeMode: true)
+                    || _Is(returnType, typeof(double), leftParameter, typeof(double), rightParameter, typeof(double), primativeMode: true)
                     || (operatorType.ToMethodName() is var operatorName
                         && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
                             v.GetMethods(BindingFlags.Public | BindingFlags.Static)
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
-                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
 
                 OperatorType.ExclusiveOr
                 or OperatorType.BitwiseAnd
                 or OperatorType.BitwiseOr =>
-                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int))
-                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(uint))
-                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(long))
-                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(ulong))
+                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(uint), primativeMode: true)
+                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(long), primativeMode: true)
+                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(ulong), primativeMode: true)
                     || (operatorType.ToMethodName() is var operatorName
                         && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
                             v.GetMethods(BindingFlags.Public | BindingFlags.Static)
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
-                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
 
                 OperatorType.LogicalAnd
                 or OperatorType.LogicalOr =>
-                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool))
+                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool), primativeMode: true)
                     || (operatorType.ToMethodName() is var operatorName
                         && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
                             v.GetMethods(BindingFlags.Public | BindingFlags.Static)
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
-                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
                 OperatorType.Assign => OperatorExists(leftParameter, OperatorType.Implicit, rightParameter),
 
                 OperatorType.LeftShift
                 or OperatorType.RightShift =>
-                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int))
-                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(int))
-                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(int))
-                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(int))
+                    _Is(returnType, typeof(int), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(uint), leftParameter, typeof(uint), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(long), leftParameter, typeof(long), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(ulong), leftParameter, typeof(ulong), rightParameter, typeof(int), primativeMode: true)
                     || (operatorType.ToMethodName() is var operatorName
                         && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
                             v.GetMethods(BindingFlags.Public | BindingFlags.Static)
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
-                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
 
                 OperatorType.Equality
                 or OperatorType.Inequality
@@ -375,19 +378,19 @@ namespace Swiss.Editor.Templates
                 or OperatorType.LessThan
                 or OperatorType.GreaterThanOrEqual
                 or OperatorType.LessThanOrEqual =>
-                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool))
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(int), rightParameter, typeof(int))
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(uint), rightParameter, typeof(uint))
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(long), rightParameter, typeof(long))
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(ulong), rightParameter, typeof(ulong))
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(float), rightParameter, typeof(float))
-                    || _Is(returnType, typeof(bool), leftParameter, typeof(double), rightParameter, typeof(double))
+                    _Is(returnType, typeof(bool), leftParameter, typeof(bool), rightParameter, typeof(bool), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(int), rightParameter, typeof(int), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(uint), rightParameter, typeof(uint), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(long), rightParameter, typeof(long), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(ulong), rightParameter, typeof(ulong), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(float), rightParameter, typeof(float), primativeMode: true)
+                    || _Is(returnType, typeof(bool), leftParameter, typeof(double), rightParameter, typeof(double), primativeMode: true)
                     || (operatorType.ToMethodName() is var operatorName
                         && Enumerable.Concat(_BaseTypes(leftParameter), _BaseTypes(rightParameter)).Distinct().SelectMany((v) =>
                             v.GetMethods(BindingFlags.Public | BindingFlags.Static)
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
-                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, primativeMode: false))),
 
                 OperatorType.AdditionAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Addition, rightParameter),
                 OperatorType.SubtractionAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Subtraction, rightParameter),
@@ -405,7 +408,7 @@ namespace Swiss.Editor.Templates
                             v.GetMethods(BindingFlags.Public | BindingFlags.Static)
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
-                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType)),
+                                && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType, false)),
 
                 _ => false,
             };
