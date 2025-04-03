@@ -140,6 +140,8 @@ namespace Swiss.Editor.Templates
     {
         private readonly Type _type = null;
 
+        public Type type => _type;
+
         private TemplateType(Type type)
         {
             _type = type ?? throw new NullReferenceException();
@@ -199,17 +201,38 @@ namespace Swiss.Editor.Templates
             }
         }
 
+        public bool HasOperator(Type returnType, OperatorType operatorType, bool explicitCastResult = false) =>
+            TemplateContext.OperatorExists(returnType, operatorType, this, explicitCastResult);
+        public bool HasOperator(Type returnType, OperatorType operatorType, Type otherType, bool explicitCastResult = false) =>
+            TemplateContext.OperatorExists(returnType, operatorType, this, otherType, explicitCastResult);
+
         public bool HasMethod(Type returnType, string name, Type[] parameterTypes, bool explicitCastResult = false) =>
             _type.GetMethods(BindingFlags.Public | BindingFlags.Instance).Any((v) =>
                 v.Name == name
-                && (explicitCastResult ? TemplateContext.OperatorExists(OperatorType.Explicit, returnType, v.ReturnType) : returnType.IsAssignableFrom(v.ReturnType))
+                && (explicitCastResult ? TemplateContext.OperatorExists(returnType, OperatorType.Explicit, v.ReturnType) : returnType.IsAssignableFrom(v.ReturnType))
                 && v.GetParameters().Aggregate((min: 0, max: 0), (p, v) => (v.IsOptional ? p.min : p.min + 1, p.max + 1)) is var parameterLengthRange
                 && v.GetParameters().Length >= parameterLengthRange.min
                 && v.GetParameters().Length <= parameterLengthRange.max
                 && parameterTypes.Select((parameterType, i) => (parameterType, targetParameter: v.GetParameters()[i])).Any((v) =>
                     v.targetParameter.ParameterType.IsAssignableFrom(v.parameterType)));
 
+        public bool HasProperty(Type type, string name, bool readOnly, bool explicitCasting = false) =>
+            _type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Any((v) =>
+                v.Name == name
+                && (explicitCasting ? TemplateContext.OperatorExists(type, OperatorType.Explicit, v.PropertyType) : type.IsAssignableFrom(v.PropertyType))
+                && (readOnly
+                    || (explicitCasting ? TemplateContext.OperatorExists(v.PropertyType, OperatorType.Explicit, type) : v.PropertyType.IsAssignableFrom(type))))
+            || HasField(type, name, readOnly, explicitCasting);
+
+        public bool HasField(Type type, string name, bool readOnly, bool explicitCasting = false) =>
+            _type.GetFields(BindingFlags.Public | BindingFlags.Instance).Any((v) =>
+                v.Name == name
+                && (explicitCasting ? TemplateContext.OperatorExists(type, OperatorType.Explicit, v.FieldType) : type.IsAssignableFrom(v.FieldType))
+                && (readOnly
+                    || (explicitCasting ? TemplateContext.OperatorExists(v.FieldType, OperatorType.Explicit, type) : v.FieldType.IsAssignableFrom(type))));
+
         public static implicit operator TemplateType(Type type) => new(type);
+        public static implicit operator Type(TemplateType type) => type.type;
     }
 }
 #endif

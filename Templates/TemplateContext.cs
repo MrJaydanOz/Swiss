@@ -275,15 +275,15 @@ namespace Swiss.Editor.Templates
             return list;
         }
 
-        public static bool OperatorExists(OperatorType operatorType, Type returnType, Type[] parameters, bool explicitCastResult = false) =>
-            parameters.Length == 1 ? OperatorExists(operatorType, returnType, parameters[0], explicitCastResult) :
-            parameters.Length == 2 ? OperatorExists(operatorType, returnType, parameters[0], parameters[1], explicitCastResult) :
+        public static bool OperatorExists(Type returnType, OperatorType operatorType, Type[] parameters, bool explicitCastResult = false) =>
+            parameters.Length == 1 ? OperatorExists(returnType, operatorType, parameters[0], explicitCastResult) :
+            parameters.Length == 2 ? OperatorExists(returnType, operatorType, parameters[0], parameters[1], explicitCastResult) :
             false;
-        public static bool OperatorExists(OperatorType operatorType, Type returnType, Type leftParameter, Type rightParameter, bool explicitCastResult = false)
+        public static bool OperatorExists(Type returnType, OperatorType operatorType, Type leftParameter, Type rightParameter, bool explicitCastResult = false)
         {
             bool _Is(Type returnType, Type targetReturnType, Type leftParameter, Type targetLeftParameter, Type rightParameter, Type targetRightParameter)
             {
-                if (explicitCastResult ? !OperatorExists(OperatorType.Explicit, returnType, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
+                if (explicitCastResult ? !OperatorExists(returnType, OperatorType.Explicit, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
                     return false;
 
                 byte leftMatch = 0;
@@ -291,12 +291,12 @@ namespace Swiss.Editor.Templates
 
                 if (targetLeftParameter.IsAssignableFrom(leftParameter))
                     leftMatch = 2;
-                else if (OperatorExists(OperatorType.Implicit, targetLeftParameter, leftParameter))
+                else if (OperatorExists(targetLeftParameter, OperatorType.Implicit, leftParameter))
                     leftMatch = 1;
 
                 if (targetRightParameter.IsAssignableFrom(rightParameter))
                     rightMatch = 2;
-                else if (OperatorExists(OperatorType.Implicit, targetRightParameter, rightParameter))
+                else if (OperatorExists(targetRightParameter, OperatorType.Implicit, rightParameter))
                     rightMatch = 1;
 
                 return (leftMatch >= 2 && rightMatch >= 1) || (leftMatch >= 1 && rightMatch >= 2);
@@ -354,7 +354,7 @@ namespace Swiss.Editor.Templates
                             .Where((v) => v.Name == operatorName)).Any((v) =>
                                 v.GetParameters().Length == 2
                                 && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
-                OperatorType.Assign => OperatorExists(OperatorType.Implicit, leftParameter, rightParameter),
+                OperatorType.Assign => OperatorExists(leftParameter, OperatorType.Implicit, rightParameter),
 
                 OperatorType.LeftShift
                 or OperatorType.RightShift =>
@@ -389,15 +389,15 @@ namespace Swiss.Editor.Templates
                                 v.GetParameters().Length == 2
                                 && _Is(returnType, v.ReturnType, leftParameter, v.GetParameters()[0].ParameterType, rightParameter, v.GetParameters()[1].ParameterType))),
 
-                OperatorType.AdditionAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Addition, leftParameter, rightParameter),
-                OperatorType.SubtractionAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Subtraction, leftParameter, rightParameter),
-                OperatorType.MultiplicationAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Multiply, leftParameter, rightParameter),
-                OperatorType.DivisionAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Division, leftParameter, rightParameter),
-                OperatorType.ModulusAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.Modulus, leftParameter, rightParameter),
-                OperatorType.ExclusiveOrAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.ExclusiveOr, leftParameter, rightParameter),
-                OperatorType.BitwiseAndAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.BitwiseAnd, leftParameter, rightParameter),
-                OperatorType.BitwiseOrAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.BitwiseOr, leftParameter, rightParameter),
-                OperatorType.LeftShiftAssignment => OperatorExists(OperatorType.Implicit, returnType, leftParameter) && OperatorExists(OperatorType.LeftShift, leftParameter, rightParameter),
+                OperatorType.AdditionAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Addition, rightParameter),
+                OperatorType.SubtractionAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Subtraction, rightParameter),
+                OperatorType.MultiplicationAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Multiply, rightParameter),
+                OperatorType.DivisionAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Division, rightParameter),
+                OperatorType.ModulusAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.Modulus, rightParameter),
+                OperatorType.ExclusiveOrAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.ExclusiveOr, rightParameter),
+                OperatorType.BitwiseAndAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.BitwiseAnd, rightParameter),
+                OperatorType.BitwiseOrAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.BitwiseOr, rightParameter),
+                OperatorType.LeftShiftAssignment => OperatorExists(returnType, OperatorType.Implicit, leftParameter) && OperatorExists(leftParameter, OperatorType.LeftShift, rightParameter),
 
                 OperatorType.Comma =>
                     operatorType.ToMethodName() is var operatorName
@@ -410,11 +410,11 @@ namespace Swiss.Editor.Templates
                 _ => false,
             };
         }
-        public static bool OperatorExists(OperatorType operatorType, Type returnType, Type parameter, bool explicitCastResult = false)
+        public static bool OperatorExists(Type returnType, OperatorType operatorType, Type parameter, bool explicitCastResult = false)
         {
             bool _Is(Type returnType, Type targetReturnType, Type parameter, Type targetParameter)
             {
-                if (explicitCastResult ? !OperatorExists(OperatorType.Explicit, returnType, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
+                if (explicitCastResult ? !OperatorExists(returnType, OperatorType.Explicit, targetReturnType) : !returnType.IsAssignableFrom(targetReturnType))
                     return false;
 
                 return targetParameter.IsAssignableFrom(parameter);
@@ -433,7 +433,7 @@ namespace Swiss.Editor.Templates
             {
                 OperatorType.Implicit =>
                     returnType.IsAssignableFrom(parameter)
-                    || (explicitCastResult ? OperatorExists(OperatorType.Explicit, returnType, parameter)
+                    || (explicitCastResult ? OperatorExists(returnType, OperatorType.Explicit, parameter)
                         : (returnType == typeof(bool)
                             && parameter == typeof(bool))
                         || (returnType == typeof(byte)
